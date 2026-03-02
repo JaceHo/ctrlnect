@@ -1,0 +1,16 @@
+{
+  "name": "webclaude",
+  "private": true,
+  "workspaces": ["shared", "server", "client"],
+  "scripts": {
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+    "dev:server": "bun run --watch server/src/index.ts",
+    "dev:client": "cd client && bunx vite",
+    "build": "cd client && bunx vite build",
+    "typecheck": "tsc --build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}

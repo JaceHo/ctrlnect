@@ -1,0 +1,65 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import type { ServerWebSocket } from "bun";
+import { SessionStore } from "./session-store.js";
+import { ConnectionManager, type WSData } from "./connection-manager.js";
+import { AgentRunner } from "./agent-runner.js";
+import { WSHandler } from "./ws-handler.js";
+import { createApiRoutes } from "./routes/api.js";
+
+const sessionStore = new SessionStore();
+const connectionManager = new ConnectionManager();
+const agentRunner = new AgentRunner();
+const wsHandler = new WSHandler(connectionManager, agentRunner, sessionStore);
+
+const app = new Hono();
+
+// CORS for dev mode
+app.use("/api/*", cors({ origin: "*" }));
+
+// REST API
+const apiRoutes = createApiRoutes(sessionStore, agentRunner, connectionManager);
+app.route("/api", apiRoutes);
+
+// Health check
+app.get("/health", (c) => c.json({ status: "ok" }));
+
+const PORT = parseInt(process.env.PORT || "3001");
+
+Bun.serve<WSData>({
+  port: PORT,
+  fetch(req, server) {
+    const url = new URL(req.url);
+
+    // WebSocket upgrade
+    if (url.pathname === "/ws") {
+      const upgraded = server.upgrade(req, {
+        data: { subscribedSessions: new Set<string>() },
+      });
+      if (upgraded) return undefined as unknown as Response;
+      return new Response("WebSocket upgrade failed", { status: 400 });
+    }
+
+    // Hono handles everything else
+    return app.fetch(req);
+  },
+  websocket: {
+    open(ws: ServerWebSocket<WSData>) {
+      wsHandler.onOpen(ws);
+    },
+    message(ws: ServerWebSocket<WSData>, message) {
+      wsHandler.onMessage(ws, message);
+    },
+    close(ws: ServerWebSocket<WSData>) {
+      wsHandler.onClose(ws);
+    },
+  },
+});
+
+console.log(`WebClaude server running on http://localhost:${PORT}`);
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  await agentRunner.closeAll();
+  process.exit(0);
+});
