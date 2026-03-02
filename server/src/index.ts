@@ -58,6 +58,14 @@ Bun.serve<WSData>({
 
 console.log(`WebClaude server running on http://localhost:${PORT}`);
 
+// Prevent server crash from unhandled errors in SDK subprocesses
+process.on("uncaughtException", (err) => {
+  console.error("[Server] Uncaught exception (server stays alive):", err.message);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[Server] Unhandled rejection (server stays alive):", reason);
+});
+
 // Graceful shutdown
 process.on("SIGINT", async () => {
   await agentRunner.closeAll();

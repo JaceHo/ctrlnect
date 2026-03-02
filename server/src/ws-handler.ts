@@ -122,13 +122,24 @@ export class WSHandler {
           cost,
         });
       },
-      onError: (err) => {
+      onError: (err, willRetry) => {
+        if (willRetry) {
+          // Transient failure — notify client but stay "running" for retry
+          this.connectionManager.broadcast(sessionId, {
+            type: "error",
+            sessionId,
+            message: `${err.message} — retrying...`,
+          });
+          return;
+        }
+
+        // Final failure — set error then auto-recover to idle
         this.sessionStore.updateStatus(sessionId, "error");
-        const updated = this.sessionStore.get(sessionId);
-        if (updated) {
+        const errSession = this.sessionStore.get(sessionId);
+        if (errSession) {
           this.connectionManager.broadcast(sessionId, {
             type: "session_update",
-            session: updated,
+            session: errSession,
           });
         }
         this.connectionManager.broadcast(sessionId, {
@@ -140,6 +151,19 @@ export class WSHandler {
           type: "stream_end",
           sessionId,
         });
+
+        // Auto-recover to idle after 2s so new queries can be sent
+        setTimeout(() => {
+          const current = this.sessionStore.get(sessionId);
+          if (current?.status === "error") {
+            this.sessionStore.updateStatus(sessionId, "idle");
+            const recovered = this.sessionStore.get(sessionId)!;
+            this.connectionManager.broadcast(sessionId, {
+              type: "session_update",
+              session: recovered,
+            });
+          }
+        }, 2000);
       },
     });
   }
