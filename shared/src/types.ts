@@ -1,3 +1,22 @@
+// --- Message persistence types ---
+
+export type ContentBlock =
+  | { type: "text"; text: string }
+  | { type: "thinking"; text: string }
+  | { type: "tool_use"; id: string; name: string; input: unknown }
+  | { type: "tool_result"; toolUseId: string; content: string; isError?: boolean }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
+export interface PersistedMessage {
+  id: string;
+  role: "user" | "assistant";
+  blocks: ContentBlock[];
+  parentToolUseId: string | null;
+  timestamp: string;
+}
+
+// --- Session types ---
+
 export type SessionStatus = "idle" | "running" | "error";
 
 export interface Session {

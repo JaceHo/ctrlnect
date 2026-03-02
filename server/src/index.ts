@@ -4,13 +4,15 @@ import type { ServerWebSocket } from "bun";
 import { SessionStore } from "./session-store.js";
 import { ConnectionManager, type WSData } from "./connection-manager.js";
 import { AgentRunner } from "./agent-runner.js";
+import { MessageStore } from "./message-store.js";
 import { WSHandler } from "./ws-handler.js";
 import { createApiRoutes } from "./routes/api.js";
 
 const sessionStore = new SessionStore();
 const connectionManager = new ConnectionManager();
 const agentRunner = new AgentRunner();
-const wsHandler = new WSHandler(connectionManager, agentRunner, sessionStore);
+const messageStore = new MessageStore();
+const wsHandler = new WSHandler(connectionManager, agentRunner, sessionStore, messageStore);
 
 const app = new Hono();
 
@@ -18,7 +20,7 @@ const app = new Hono();
 app.use("/api/*", cors({ origin: "*" }));
 
 // REST API
-const apiRoutes = createApiRoutes(sessionStore, agentRunner, connectionManager);
+const apiRoutes = createApiRoutes(sessionStore, agentRunner, connectionManager, messageStore);
 app.route("/api", apiRoutes);
 
 // Health check

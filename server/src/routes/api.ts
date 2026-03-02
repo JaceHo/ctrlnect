@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { SessionStore } from "../session-store.js";
 import type { AgentRunner } from "../agent-runner.js";
 import type { ConnectionManager } from "../connection-manager.js";
+import type { MessageStore } from "../message-store.js";
 import type { CreateSessionRequest, UpdateSessionRequest } from "@webclaude/shared";
 import { AVAILABLE_MODELS } from "@webclaude/shared";
 
@@ -9,6 +10,7 @@ export function createApiRoutes(
   sessionStore: SessionStore,
   agentRunner: AgentRunner,
   connectionManager: ConnectionManager,
+  messageStore: MessageStore,
 ) {
   const api = new Hono();
 
@@ -47,6 +49,14 @@ export function createApiRoutes(
     return c.json(session);
   });
 
+  // Get messages for a session
+  api.get("/sessions/:id/messages", (c) => {
+    const id = c.req.param("id");
+    const session = sessionStore.get(id);
+    if (!session) return c.json({ error: "Not found" }, 404);
+    return c.json(messageStore.getAll(id));
+  });
+
   // Delete a session
   api.delete("/sessions/:id", async (c) => {
     const id = c.req.param("id");
@@ -54,6 +64,7 @@ export function createApiRoutes(
     if (agentRunner.isRunning(id)) {
       await agentRunner.interrupt(id);
     }
+    messageStore.delete(id);
     const deleted = sessionStore.delete(id);
     if (!deleted) return c.json({ error: "Not found" }, 404);
     return c.json({ ok: true });

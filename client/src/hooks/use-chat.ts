@@ -1,20 +1,104 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWS, useWSListener } from "./use-websocket";
-import type { ServerMessage, CostInfo, ImageData } from "@webclaude/shared";
+import type { ServerMessage, CostInfo, ImageData, ContentBlock, PersistedMessage } from "@webclaude/shared";
 
-export type ContentBlock =
-  | { type: "text"; text: string }
-  | { type: "thinking"; text: string }
-  | { type: "tool_use"; id: string; name: string; input: unknown }
-  | { type: "tool_result"; toolUseId: string; content: string; isError?: boolean }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+export type { ContentBlock } from "@webclaude/shared";
 
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  blocks: ContentBlock[];
+export type ChatMessage = PersistedMessage;
+
+// --- Typewriter animation for non-streaming responses ---
+// Characters revealed per animation frame (~16ms)
+const CHARS_PER_FRAME = 12;
+
+interface TypewriterJob {
+  uuid: string;
+  fullBlocks: ContentBlock[];
+  revealedChars: number;
+  totalChars: number;
   parentToolUseId: string | null;
-  timestamp: string;
+}
+
+let typewriterJobs: TypewriterJob[] = [];
+let typewriterRafId: number | null = null;
+let typewriterSetMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>> | null = null;
+/** Track whether we received any stream_event (real streaming) */
+let gotStreamEvents = false;
+
+function startTypewriterLoop() {
+  if (typewriterRafId !== null) return;
+  const tick = () => {
+    if (typewriterJobs.length === 0 || !typewriterSetMessages) {
+      typewriterRafId = null;
+      return;
+    }
+    const setMsg = typewriterSetMessages;
+    const done: string[] = [];
+
+    for (const job of typewriterJobs) {
+      job.revealedChars = Math.min(job.revealedChars + CHARS_PER_FRAME, job.totalChars);
+      const partialBlocks = sliceBlocks(job.fullBlocks, job.revealedChars);
+
+      setMsg((prev) => {
+        const idx = prev.findIndex((m) => m.id === job.uuid && m.role === "assistant");
+        const msg: ChatMessage = {
+          id: job.uuid,
+          role: "assistant",
+          blocks: partialBlocks,
+          parentToolUseId: job.parentToolUseId,
+          timestamp: new Date().toISOString(),
+        };
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = msg;
+          return next;
+        }
+        return [...prev, msg];
+      });
+
+      if (job.revealedChars >= job.totalChars) {
+        done.push(job.uuid);
+      }
+    }
+
+    typewriterJobs = typewriterJobs.filter((j) => !done.includes(j.uuid));
+    typewriterRafId = requestAnimationFrame(tick);
+  };
+  typewriterRafId = requestAnimationFrame(tick);
+}
+
+function cancelTypewriter() {
+  typewriterJobs = [];
+  if (typewriterRafId !== null) {
+    cancelAnimationFrame(typewriterRafId);
+    typewriterRafId = null;
+  }
+}
+
+/** Count total text characters across text/thinking blocks */
+function countTextChars(blocks: ContentBlock[]): number {
+  let n = 0;
+  for (const b of blocks) {
+    if (b.type === "text" || b.type === "thinking") n += b.text.length;
+  }
+  return n;
+}
+
+/** Slice blocks to reveal only the first `chars` characters of text/thinking content */
+function sliceBlocks(blocks: ContentBlock[], chars: number): ContentBlock[] {
+  const result: ContentBlock[] = [];
+  let remaining = chars;
+  for (const b of blocks) {
+    if (b.type === "text" || b.type === "thinking") {
+      if (remaining <= 0) break;
+      const sliced = b.text.slice(0, remaining);
+      remaining -= sliced.length;
+      result.push({ ...b, text: sliced });
+    } else {
+      // tool_use, tool_result, image — include as-is
+      result.push(b);
+    }
+  }
+  return result;
 }
 
 export function useChat(sessionId: string | null) {
@@ -27,16 +111,40 @@ export function useChat(sessionId: string | null) {
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
 
-  // Subscribe when session changes
+  // Keep setMessages available for typewriter
+  typewriterSetMessages = setMessages;
+
+  // Subscribe when session changes + load history
   useEffect(() => {
     if (!sessionId) return;
+    let cancelled = false;
     console.log("[Chat] Subscribing to session", sessionId);
     setMessages([]);
     setStreaming(false);
     setLastCost(undefined);
+    gotStreamEvents = false;
+    cancelTypewriter();
     ws.send({ type: "subscribe", sessionId });
+
+    // Load persisted message history
+    fetch(`/api/sessions/${sessionId}/messages`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((history: ChatMessage[]) => {
+        if (cancelled || !history.length) return;
+        console.log("[Chat] Loaded", history.length, "messages from history");
+        setMessages((prev) => {
+          // Merge: history first, then any live messages not in history
+          const historyIds = new Set(history.map((m) => m.id));
+          const live = prev.filter((m) => !historyIds.has(m.id));
+          return [...history, ...live];
+        });
+      })
+      .catch((err) => console.error("[Chat] Failed to load history:", err));
+
     return () => {
+      cancelled = true;
       ws.send({ type: "unsubscribe", sessionId });
+      cancelTypewriter();
     };
   }, [sessionId, ws]);
 
@@ -50,6 +158,7 @@ export function useChat(sessionId: string | null) {
       switch (msg.type) {
         case "stream_start":
           setStreaming(true);
+          gotStreamEvents = false;
           break;
 
         case "stream_end":
@@ -60,6 +169,7 @@ export function useChat(sessionId: string | null) {
         case "error":
           console.error("[Chat] Error:", msg.message);
           setStreaming(false);
+          cancelTypewriter();
           setMessages((prev) => [
             ...prev,
             {
@@ -103,6 +213,7 @@ export function useChat(sessionId: string | null) {
 
   const interrupt = useCallback(() => {
     if (!sessionId) return;
+    cancelTypewriter();
     ws.send({ type: "interrupt", sessionId });
   }, [sessionId, ws]);
 
@@ -139,24 +250,59 @@ function processAgentEvent(
       const message = e.message as { content: Array<Record<string, unknown>> } | undefined;
       const parentToolUseId = (e.parent_tool_use_id as string | null) ?? null;
       const blocks = extractAssistantBlocks(message?.content);
-      console.log("[Chat] Assistant message, blocks:", blocks.length);
-      setMessages((prev) => {
-        const idx = prev.findIndex((m) => m.id === uuid);
-        const msg: ChatMessage = {
-          id: uuid, role: "assistant", blocks, parentToolUseId,
-          timestamp: new Date().toISOString(),
-        };
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = msg;
-          return next;
+      console.log("[Chat] Assistant message, blocks:", blocks.length, "gotStreamEvents:", gotStreamEvents);
+
+      if (gotStreamEvents) {
+        // Real streaming mode — update message in place (stream deltas already handled)
+        setMessages((prev) => {
+          const idx = prev.findIndex((m) => m.id === uuid);
+          const msg: ChatMessage = {
+            id: uuid, role: "assistant", blocks, parentToolUseId,
+            timestamp: new Date().toISOString(),
+          };
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = msg;
+            return next;
+          }
+          return [...prev, msg];
+        });
+      } else {
+        // Non-streaming fallback — use typewriter animation
+        const totalChars = countTextChars(blocks);
+        if (totalChars > 0) {
+          // Remove any existing job for this uuid
+          typewriterJobs = typewriterJobs.filter((j) => j.uuid !== uuid);
+          typewriterJobs.push({
+            uuid,
+            fullBlocks: blocks,
+            revealedChars: 0,
+            totalChars,
+            parentToolUseId,
+          });
+          startTypewriterLoop();
+        } else {
+          // No text to animate (only tool_use blocks), render immediately
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === uuid);
+            const msg: ChatMessage = {
+              id: uuid, role: "assistant", blocks, parentToolUseId,
+              timestamp: new Date().toISOString(),
+            };
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = msg;
+              return next;
+            }
+            return [...prev, msg];
+          });
         }
-        return [...prev, msg];
-      });
+      }
       break;
     }
 
     case "stream_event": {
+      gotStreamEvents = true;
       const uuid = (e.uuid as string) || "";
       const parentToolUseId = (e.parent_tool_use_id as string | null) ?? null;
       const streamEvt = e.event as Record<string, unknown> | undefined;

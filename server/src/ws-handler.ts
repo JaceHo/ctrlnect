@@ -1,14 +1,16 @@
 import type { ServerWebSocket } from "bun";
-import type { ClientMessage } from "@webclaude/shared";
+import type { ClientMessage, ContentBlock, PersistedMessage } from "@webclaude/shared";
 import type { ConnectionManager, WSData } from "./connection-manager.js";
 import type { AgentRunner } from "./agent-runner.js";
 import type { SessionStore } from "./session-store.js";
+import type { MessageStore } from "./message-store.js";
 
 export class WSHandler {
   constructor(
     private connectionManager: ConnectionManager,
     private agentRunner: AgentRunner,
     private sessionStore: SessionStore,
+    private messageStore: MessageStore,
   ) {}
 
   onOpen(ws: ServerWebSocket<WSData>) {
@@ -81,6 +83,16 @@ export class WSHandler {
       return;
     }
 
+    // Persist user message
+    const userMsg: PersistedMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      blocks: [{ type: "text", text }],
+      parentToolUseId: null,
+      timestamp: new Date().toISOString(),
+    };
+    this.messageStore.append(sessionId, userMsg);
+
     // Update session status
     this.sessionStore.updateStatus(sessionId, "running");
     this.sessionStore.incrementMessages(sessionId);
@@ -103,6 +115,9 @@ export class WSHandler {
           sessionId,
           event,
         });
+
+        // Persist assistant and tool-result messages from final "assistant" events
+        this.persistAgentEvent(sessionId, event);
       },
       onEnd: (cost) => {
         if (cost) {
@@ -124,7 +139,6 @@ export class WSHandler {
       },
       onError: (err, willRetry) => {
         if (willRetry) {
-          // Transient failure — notify client but stay "running" for retry
           this.connectionManager.broadcast(sessionId, {
             type: "error",
             sessionId,
@@ -133,7 +147,16 @@ export class WSHandler {
           return;
         }
 
-        // Final failure — set error then auto-recover to idle
+        // Persist the error as a message so it shows on reload
+        const errMsg: PersistedMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          blocks: [{ type: "text", text: `Error: ${err.message}` }],
+          parentToolUseId: null,
+          timestamp: new Date().toISOString(),
+        };
+        this.messageStore.append(sessionId, errMsg);
+
         this.sessionStore.updateStatus(sessionId, "error");
         const errSession = this.sessionStore.get(sessionId);
         if (errSession) {
@@ -152,7 +175,7 @@ export class WSHandler {
           sessionId,
         });
 
-        // Auto-recover to idle after 2s so new queries can be sent
+        // Auto-recover to idle after 2s
         setTimeout(() => {
           const current = this.sessionStore.get(sessionId);
           if (current?.status === "error") {
@@ -166,5 +189,61 @@ export class WSHandler {
         }, 2000);
       },
     });
+  }
+
+  /**
+   * Extract and persist messages from SDK agent events.
+   * Only saves finalized "assistant" messages (not stream deltas).
+   */
+  private persistAgentEvent(sessionId: string, event: unknown): void {
+    const e = event as Record<string, unknown>;
+    if (e.type !== "assistant") return;
+
+    const uuid = (e.uuid as string) || crypto.randomUUID();
+    const parentToolUseId = (e.parent_tool_use_id as string | null) ?? null;
+    const message = e.message as { content?: Array<Record<string, unknown>> } | undefined;
+    const blocks = this.extractBlocks(message?.content);
+
+    if (blocks.length === 0) return;
+
+    const msg: PersistedMessage = {
+      id: uuid,
+      role: "assistant",
+      blocks,
+      parentToolUseId,
+      timestamp: new Date().toISOString(),
+    };
+    this.messageStore.append(sessionId, msg);
+  }
+
+  private extractBlocks(content: Array<Record<string, unknown>> | undefined): ContentBlock[] {
+    const blocks: ContentBlock[] = [];
+    for (const part of content || []) {
+      switch (part.type) {
+        case "text":
+          blocks.push({ type: "text", text: part.text as string });
+          break;
+        case "thinking":
+          blocks.push({ type: "thinking", text: part.thinking as string });
+          break;
+        case "tool_use":
+          blocks.push({
+            type: "tool_use",
+            id: part.id as string,
+            name: part.name as string,
+            input: part.input,
+          });
+          break;
+        case "tool_result":
+          blocks.push({
+            type: "tool_result",
+            toolUseId: part.tool_use_id as string,
+            content: typeof part.content === "string" ? part.content : JSON.stringify(part.content),
+            isError: (part.is_error as boolean) || false,
+          });
+          break;
+      }
+    }
+    return blocks;
   }
 }
