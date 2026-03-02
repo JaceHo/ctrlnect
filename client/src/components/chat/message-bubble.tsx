@@ -1,11 +1,10 @@
 import type { ChatMessage, ContentBlock } from "@/hooks/use-chat";
-import { cn } from "@/lib/utils";
 import { TextBlock } from "./text-block";
 import { ThinkingBlock } from "./thinking-block";
 import { ToolUseBlock } from "./tool-use-block";
 import { ToolResultBlock } from "./tool-result-block";
 import { ImageBlock } from "./image-block";
-import { User, Bot } from "lucide-react";
+import { Bot } from "lucide-react";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -20,25 +19,33 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
+  if (isUser) {
+    // User messages: plain text, right-aligned, no bubble/icon
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[80%] text-text-secondary text-right whitespace-pre-wrap">
+          {message.blocks.map((block, i) =>
+            block.type === "text" ? (
+              <span key={i}>{block.text}</span>
+            ) : block.type === "image" ? (
+              <ImageBlock
+                key={i}
+                src={`data:${block.source.media_type};base64,${block.source.data}`}
+              />
+            ) : null,
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}
-    >
-      <div
-        className={cn(
-          "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5",
-          isUser ? "bg-user-bubble" : "bg-bg-tertiary",
-        )}
-      >
-        {isUser ? <User size={14} /> : <Bot size={14} />}
+    <div className="flex gap-3 flex-row">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-0.5 bg-bg-tertiary">
+        <Bot size={14} />
       </div>
 
-      <div
-        className={cn(
-          "flex-1 min-w-0 space-y-2",
-          isUser ? "max-w-[80%]" : "",
-        )}
-      >
+      <div className="flex-1 min-w-0 space-y-2">
         {message.blocks.map((block, i) => (
           <BlockRenderer
             key={i}
