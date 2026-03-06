@@ -139,16 +139,46 @@ The Agent SDK manages the full Claude Code subprocess lifecycle — tool executi
 
 ## Configuration
 
+### API Provider
+
+WebClaude supports two API providers. It auto-detects from your shell environment variables:
+
+**Priority chain:**
+1. **Anthropic** (default) — if `ANTHROPIC_API_KEY` is set
+2. **OpenAI-compatible** (fallback) — if only `OPENAI_API_KEY` is set
+
+If no base URL is set, the provider's official endpoint is used automatically.
+
 ### Environment Variables
+
+```bash
+# Option 1: Anthropic (default)
+export ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_BASE_URL="https://api.anthropic.com"  # optional
+
+# Option 2: OpenAI-compatible API
+export OPENAI_API_KEY="sk-..."
+export OPENAI_BASE_URL="https://api.openai.com/v1"     # optional
+```
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes* | Your Anthropic API key (`sk-ant-...`) |
-| `ANTHROPIC_AUTH_TOKEN` | Yes* | Or your Claude subscription token (`cr_...`) |
-| `ANTHROPIC_BASE_URL` | No | Custom API endpoint |
+| `ANTHROPIC_API_KEY` | Yes* | Anthropic API key (`sk-ant-...`) |
+| `ANTHROPIC_AUTH_TOKEN` | Yes* | Or Claude subscription token (`cr_...`) |
+| `ANTHROPIC_BASE_URL` | No | Custom Anthropic-compatible endpoint |
+| `OPENAI_API_KEY` | No | OpenAI API key (used if no Anthropic key set) |
+| `OPENAI_BASE_URL` | No | Custom OpenAI-compatible endpoint |
 | `PORT` | No | Server port (default: `3001`) |
 
-*One of `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` is required. The server reads from your shell environment (`~/.zshrc` / `~/.bashrc`) automatically.
+*One of `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, or `OPENAI_API_KEY` is required. The server reads from your shell environment (`~/.zshrc` / `~/.bashrc`) automatically.
+
+### UI Toggle
+
+The header shows the active provider as a badge (`Anthropic` / `OpenAI`). Click it to switch at runtime — takes effect for new agent runs. Green = API key detected, red = missing.
+
+### Proxy Support
+
+Point `ANTHROPIC_BASE_URL` or `OPENAI_BASE_URL` to any compatible proxy (LiteLLM, OpenRouter, custom gateway).
 
 ### Default Working Directory
 

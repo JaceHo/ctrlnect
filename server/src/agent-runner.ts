@@ -32,6 +32,50 @@ function isNonRetryable(err: Error): boolean {
   );
 }
 
+export type ApiProvider = "anthropic" | "openai";
+
+// Persisted provider preference (default: auto-detect)
+let preferredProvider: ApiProvider | null = null;
+
+export function setPreferredProvider(provider: ApiProvider | null) {
+  preferredProvider = provider;
+}
+
+export function detectApiProvider(): { provider: ApiProvider; hasKey: boolean; baseUrl: string | null } {
+  // If user has a preference, check that provider first
+  if (preferredProvider === "openai") {
+    const key = process.env.OPENAI_API_KEY;
+    return {
+      provider: "openai",
+      hasKey: !!key,
+      baseUrl: process.env.OPENAI_BASE_URL || null,
+    };
+  }
+
+  // Default: try Anthropic first, then fall back to OpenAI
+  const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN;
+  if (anthropicKey || preferredProvider === "anthropic") {
+    return {
+      provider: "anthropic",
+      hasKey: !!anthropicKey,
+      baseUrl: process.env.ANTHROPIC_BASE_URL || null,
+    };
+  }
+
+  // Fallback: check OpenAI env vars
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (openaiKey) {
+    return {
+      provider: "openai",
+      hasKey: true,
+      baseUrl: process.env.OPENAI_BASE_URL || null,
+    };
+  }
+
+  // Nothing set, default to anthropic
+  return { provider: "anthropic", hasKey: false, baseUrl: null };
+}
+
 function buildSDKEnv(): Record<string, string> {
   const env: Record<string, string> = {
     HOME: process.env.HOME || "",
@@ -42,12 +86,22 @@ function buildSDKEnv(): Record<string, string> {
     TERM: process.env.TERM || "xterm-256color",
   };
 
-  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN;
-  if (apiKey) env.ANTHROPIC_API_KEY = apiKey;
-  if (process.env.ANTHROPIC_BASE_URL) env.ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL;
+  const detected = detectApiProvider();
 
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k.startsWith("ANTHROPIC_") && v && !env[k]) env[k] = v;
+  if (detected.provider === "anthropic") {
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN;
+    if (apiKey) env.ANTHROPIC_API_KEY = apiKey;
+    if (process.env.ANTHROPIC_BASE_URL) env.ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL;
+
+    for (const [k, v] of Object.entries(process.env)) {
+      if (k.startsWith("ANTHROPIC_") && v && !env[k]) env[k] = v;
+    }
+  } else {
+    // OpenAI mode: map OPENAI_* env vars to ANTHROPIC_* for the SDK
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey) env.ANTHROPIC_API_KEY = apiKey;
+    const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+    env.ANTHROPIC_BASE_URL = baseUrl;
   }
 
   return env;
