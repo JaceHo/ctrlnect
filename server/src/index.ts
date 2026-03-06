@@ -16,11 +16,17 @@ import { WSHandler } from "./ws-handler.js";
 import { createApiRoutes } from "./routes/api.js";
 import { loadOpenClawConfig, getFeishuConfig } from "./openclaw-config.js";
 import { FeishuBridge } from "./feishu/feishu-bridge.js";
+import { CronStore } from "./cron-store.js";
+import { CronScheduler } from "./cron-scheduler.js";
+import { ServiceStore } from "./service-store.js";
 
 const sessionStore = new SessionStore();
 const connectionManager = new ConnectionManager();
 const agentRunner = new AgentRunner();
 const messageStore = new MessageStore();
+const cronStore = new CronStore();
+const cronScheduler = new CronScheduler(cronStore, connectionManager);
+const serviceStore = new ServiceStore();
 
 // ── OpenClaw / Feishu integration ─────────────────────────────────────────────
 const openClawConfig = loadOpenClawConfig();
@@ -61,6 +67,18 @@ const wsHandler = new WSHandler(
   feishuBridge,
 );
 
+// ── Cron scheduler ──────────────────────────────────────────────────────────
+cronScheduler.setTriggerHandler(async (cron) => {
+  console.log(`[Cron] Triggering "${cron.name}" on session ${cron.sessionId}`);
+  await wsHandler.handleChat(cron.sessionId, cron.prompt);
+});
+cronScheduler.start();
+
+// Wire cron_trigger WS messages to scheduler
+wsHandler.setCronTriggerHandler((cronId) => {
+  cronScheduler.trigger(cronId);
+});
+
 const app = new Hono();
 
 // CORS for dev mode
@@ -73,6 +91,9 @@ const apiRoutes = createApiRoutes(
   connectionManager,
   messageStore,
   feishuBridge,
+  cronStore,
+  cronScheduler,
+  serviceStore,
 );
 app.route("/api", apiRoutes);
 
@@ -123,6 +144,7 @@ process.on("unhandledRejection", (reason) => {
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
+  cronScheduler.stop();
   feishuBridge?.stop();
   await agentRunner.closeAll();
   process.exit(0);
