@@ -19,6 +19,20 @@ export interface PersistedMessage {
 
 export type SessionStatus = "idle" | "running" | "error";
 
+/** Metadata attached to sessions that mirror a Feishu DM conversation. */
+export interface FeishuDmInfo {
+  /** Feishu IM chat_id for the P2P conversation (e.g. "oc_xxx"). */
+  chatId: string;
+  /** Feishu open_id of the other party (e.g. "ou_xxx"). */
+  openId?: string;
+  /** Human-readable display name of the Feishu contact. */
+  displayName: string;
+  /** message_id of the last Feishu message we processed (for dedup). */
+  lastFeishuMessageId?: string;
+  /** When true, Claude auto-replies to incoming Feishu messages. */
+  autoReply: boolean;
+}
+
 export interface Session {
   id: string;
   title: string;
@@ -29,6 +43,8 @@ export interface Session {
   lastActivity: string;
   messageCount: number;
   totalCost: number;
+  /** Present only on sessions that mirror a Feishu DM conversation. */
+  feishuDmInfo?: FeishuDmInfo;
 }
 
 export interface ImageData {

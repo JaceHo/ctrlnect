@@ -4,6 +4,8 @@ import type { ConnectionManager, WSData } from "./connection-manager.js";
 import type { AgentRunner } from "./agent-runner.js";
 import type { SessionStore } from "./session-store.js";
 import type { MessageStore } from "./message-store.js";
+import type { FeishuBridge } from "./feishu/feishu-bridge.js";
+import { extractAssistantText } from "./agent-event-utils.js";
 
 export class WSHandler {
   constructor(
@@ -11,6 +13,9 @@ export class WSHandler {
     private agentRunner: AgentRunner,
     private sessionStore: SessionStore,
     private messageStore: MessageStore,
+    /** Optional – when present, manually-typed webclaude replies for Feishu DM
+     *  sessions are also forwarded back to Feishu after Claude finishes. */
+    private feishuBridge: FeishuBridge | null = null,
   ) {}
 
   onOpen(ws: ServerWebSocket<WSData>) {
@@ -106,6 +111,10 @@ export class WSHandler {
       sessionId,
     });
 
+    // If this is a Feishu DM session we collect assistant text to forward back.
+    const isFeishu = this.feishuBridge?.isFeishuSession(sessionId) ?? false;
+    const feishuReplyParts: string[] = [];
+
     await this.agentRunner.run(sessionId, text, {
       model: session.model,
       cwd: session.cwd,
@@ -118,8 +127,23 @@ export class WSHandler {
 
         // Persist assistant and tool-result messages from final "assistant" events
         this.persistAgentEvent(sessionId, event);
+
+        // Collect text blocks for Feishu forwarding
+        if (isFeishu) {
+          const e = event as Record<string, unknown>;
+          if (e.type === "assistant") {
+            const msg = e.message as
+              | { content?: Array<Record<string, unknown>> }
+              | undefined;
+            for (const block of msg?.content ?? []) {
+              if (block.type === "text" && typeof block.text === "string") {
+                feishuReplyParts.push(block.text as string);
+              }
+            }
+          }
+        }
       },
-      onEnd: (cost) => {
+      onEnd: async (cost) => {
         if (cost) {
           this.sessionStore.addCost(sessionId, cost.totalCost);
         }
@@ -136,6 +160,17 @@ export class WSHandler {
           sessionId,
           cost,
         });
+
+        // Forward the reply to Feishu for manually-typed webclaude messages
+        // Skip if session has placeholder chatId (no real Feishu DM yet)
+        const session = this.sessionStore.get(sessionId);
+        const hasValidChatId = session?.feishuDmInfo?.chatId && session.feishuDmInfo.chatId !== "placeholder";
+        if (isFeishu && this.feishuBridge && hasValidChatId) {
+          const replyText = feishuReplyParts.join("").trim();
+          if (replyText) {
+            await this.feishuBridge.forwardReplyToFeishu(sessionId, replyText);
+          }
+        }
       },
       onError: (err, willRetry) => {
         if (willRetry) {

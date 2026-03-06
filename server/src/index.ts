@@ -14,12 +14,52 @@ import { AgentRunner } from "./agent-runner.js";
 import { MessageStore } from "./message-store.js";
 import { WSHandler } from "./ws-handler.js";
 import { createApiRoutes } from "./routes/api.js";
+import { loadOpenClawConfig, getFeishuConfig } from "./openclaw-config.js";
+import { FeishuBridge } from "./feishu/feishu-bridge.js";
 
 const sessionStore = new SessionStore();
 const connectionManager = new ConnectionManager();
 const agentRunner = new AgentRunner();
 const messageStore = new MessageStore();
-const wsHandler = new WSHandler(connectionManager, agentRunner, sessionStore, messageStore);
+
+// ── OpenClaw / Feishu integration ─────────────────────────────────────────────
+const openClawConfig = loadOpenClawConfig();
+const feishuConfig = getFeishuConfig(openClawConfig);
+
+let feishuBridge: FeishuBridge | null = null;
+
+if (feishuConfig) {
+  console.log(
+    `[OpenClaw] Feishu integration enabled – ${feishuConfig.sessions.length} session(s) configured`,
+  );
+  feishuBridge = new FeishuBridge(
+    feishuConfig.app_id,
+    feishuConfig.app_secret,
+    feishuConfig.poll_interval_ms ?? 5000,
+    feishuConfig.sessions,
+    sessionStore,
+    messageStore,
+    connectionManager,
+    agentRunner,
+  );
+  // Non-blocking – resolves sessions and starts polling in background
+  feishuBridge.initialize().catch((err) =>
+    console.error("[OpenClaw] Feishu bridge initialization error:", err),
+  );
+} else {
+  console.log(
+    "[OpenClaw] Feishu integration disabled. Edit ~/.openclaw/config.json to enable.",
+  );
+}
+
+// ── WebSocket handler (feishuBridge passed for reply forwarding) ───────────────
+const wsHandler = new WSHandler(
+  connectionManager,
+  agentRunner,
+  sessionStore,
+  messageStore,
+  feishuBridge,
+);
 
 const app = new Hono();
 
@@ -27,7 +67,13 @@ const app = new Hono();
 app.use("/api/*", cors({ origin: "*" }));
 
 // REST API
-const apiRoutes = createApiRoutes(sessionStore, agentRunner, connectionManager, messageStore);
+const apiRoutes = createApiRoutes(
+  sessionStore,
+  agentRunner,
+  connectionManager,
+  messageStore,
+  feishuBridge,
+);
 app.route("/api", apiRoutes);
 
 // Health check
@@ -77,6 +123,7 @@ process.on("unhandledRejection", (reason) => {
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
+  feishuBridge?.stop();
   await agentRunner.closeAll();
   process.exit(0);
 });
