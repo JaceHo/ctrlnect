@@ -2,11 +2,9 @@
 
 # CtrlNect
 
-**Maximum Control · Maximum Connection · Maximum Usage**
-
-Self-hosted web control plane for autonomous AI coding agents.<br/>
-Multi-session · Real-time streaming · Cron automation · iTerm2 · WeChat · Feishu · Service manager<br/>
-Works with **Anthropic** and any **OpenAI-compatible API** — bring your own base URL and secret key.
+Self-hosted web UI for autonomous AI coding agents.<br/>
+Run multiple sessions simultaneously, stream tool execution in real time, schedule agent runs with cron, manage services, and monitor iTerm2 terminals and WeChat — all from one browser tab, on any device.<br/>
+Works with **Anthropic** and any **OpenAI-compatible API** (custom base URL + secret key).
 
 [Quick Start](#quick-start) · [Features](#features) · [Architecture](#architecture) · [Configuration](#configuration) · [API Reference](#api-reference)
 
@@ -359,6 +357,6 @@ GET    /health                           Health check
 
 <div align="center">
 
-Built with the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk) · Maximum Control · Maximum Connection · Maximum Usage
+Built with the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk)
 
 </div>
