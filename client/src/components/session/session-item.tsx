@@ -1,5 +1,5 @@
 import { Trash2, Circle } from "lucide-react";
-import type { Session } from "@webclaude/shared";
+import type { Session } from "@ctrlnect/shared";
 import { cn, formatTime, truncate } from "@/lib/utils";
 import { FeishuIcon } from "@/components/icons/feishu-icon";
 

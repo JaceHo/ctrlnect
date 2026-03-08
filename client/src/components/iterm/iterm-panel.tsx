@@ -2,7 +2,7 @@ import { ChevronDown, ChevronRight, Terminal, WifiOff, Loader2, FolderOpen } fro
 import { useState, useEffect } from "react";
 import type { ItermSession } from "@/hooks/use-iterm";
 
-const STORAGE_KEY = "webclaude_iterm_panel_expanded";
+const STORAGE_KEY = "ctrlnect_iterm_panel_expanded";
 
 function getStoredExpanded(): boolean {
   try {

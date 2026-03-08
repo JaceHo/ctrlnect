@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { ServerMessage } from "@webclaude/shared";
+import type { ServerMessage } from "@ctrlnect/shared";
 
 export interface WSData {
   subscribedSessions: Set<string>;

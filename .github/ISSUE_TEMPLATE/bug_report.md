@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in WebClaude
+about: Report a bug in CtrlNect
 title: "[Bug] "
 labels: bug
 ---

@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
-import type { CronJob, CronRunLog } from "@webclaude/shared";
+import type { CronJob, CronRunLog } from "@ctrlnect/shared";
 
 const DATA_DIR = join(import.meta.dir, "../../data");
 const CRONS_FILE = join(DATA_DIR, "crons.json");

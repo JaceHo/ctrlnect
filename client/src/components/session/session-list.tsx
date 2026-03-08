@@ -1,5 +1,5 @@
 import { MessageCircle } from "lucide-react";
-import type { Session } from "@webclaude/shared";
+import type { Session } from "@ctrlnect/shared";
 import { SessionItem } from "./session-item";
 import { FeishuIcon } from "@/components/icons/feishu-icon";
 import { cn } from "@/lib/utils";

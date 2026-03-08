@@ -1,4 +1,4 @@
-import type { ImageData } from "@webclaude/shared";
+import type { ImageData } from "@ctrlnect/shared";
 
 export function processImageFile(
   file: File,

@@ -12,9 +12,9 @@ import { SessionView } from "./components/session/session-view";
 import { CronLogView } from "./components/cron/cron-log-view";
 import { ItermView } from "./components/iterm/iterm-view";
 import { WeChatView } from "./components/wechat/wechat-view";
-import type { CreateSessionRequest } from "@webclaude/shared";
+import type { CreateSessionRequest } from "@ctrlnect/shared";
 
-const STORAGE_KEY = "webclaude_active_session_id";
+const STORAGE_KEY = "ctrlnect_active_session_id";
 
 // Deterministic tab ID — same item always gets the same tab.
 const tabId = (type: TabType, itemId: string) => `${type}:${itemId}`;
@@ -171,7 +171,7 @@ function AppInner() {
         {tabs.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-text-muted">
             <div className="text-center space-y-3">
-              <h2 className="text-2xl font-light">WebClaude</h2>
+              <h2 className="text-2xl font-light">CtrlNect</h2>
               <p className="text-sm">Select a session to get started</p>
             </div>
           </div>

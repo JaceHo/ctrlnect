@@ -159,7 +159,7 @@ Bun.serve<WSData>({
   },
 });
 
-console.log(`WebClaude server running on http://localhost:${PORT}`);
+console.log(`CtrlNect server running on http://localhost:${PORT}`);
 
 // Prevent server crash from unhandled errors in SDK subprocesses
 process.on("uncaughtException", (err) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Session } from "@webclaude/shared";
+import type { Session } from "@ctrlnect/shared";
 import { formatCost } from "@/lib/utils";
 import { ModelSelector } from "../input/model-selector";
 import { Circle, ListTodo } from "lucide-react";

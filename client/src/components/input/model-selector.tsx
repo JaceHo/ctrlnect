@@ -1,4 +1,4 @@
-import { AVAILABLE_MODELS } from "@webclaude/shared";
+import { AVAILABLE_MODELS } from "@ctrlnect/shared";
 
 interface ModelSelectorProps {
   value: string;

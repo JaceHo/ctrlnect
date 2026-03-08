@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWS, useWSListener } from "./use-websocket";
-import type { ServerMessage, CostInfo, ImageData, ContentBlock, PersistedMessage } from "@webclaude/shared";
+import type { ServerMessage, CostInfo, ImageData, ContentBlock, PersistedMessage } from "@ctrlnect/shared";
 import { API_BASE } from "../api";
 
-export type { ContentBlock } from "@webclaude/shared";
+export type { ContentBlock } from "@ctrlnect/shared";
 
 export type ChatMessage = PersistedMessage;
 

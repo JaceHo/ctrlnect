@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Session, CreateSessionRequest, UpdateSessionRequest } from "@webclaude/shared";
+import type { Session, CreateSessionRequest, UpdateSessionRequest } from "@ctrlnect/shared";
 import { useWS, useWSListener } from "./use-websocket";
 import { API_BASE } from "../api";
 

@@ -1,4 +1,4 @@
-import type { ClientMessage, ServerMessage } from "@webclaude/shared";
+import type { ClientMessage, ServerMessage } from "@ctrlnect/shared";
 
 type Listener = (msg: ServerMessage) => void;
 type ConnectListener = () => void;

@@ -20,7 +20,7 @@ export interface FeishuSessionConfig {
   cwd?: string;
   /**
    * When true, Claude automatically replies to every incoming Feishu message.
-   * When false, messages appear in webclaude but you must type a reply manually.
+   * When false, messages appear in ctrlnect but you must type a reply manually.
    */
   auto_reply?: boolean;
 }

@@ -4,7 +4,7 @@ import { Header } from "../layout/header";
 import { ChatContainer } from "../chat/chat-container";
 import { ChatInput } from "../input/chat-input";
 import { TaskManagerDialog } from "../chat/task-manager-dialog";
-import type { Session, UpdateSessionRequest } from "@webclaude/shared";
+import type { Session, UpdateSessionRequest } from "@ctrlnect/shared";
 import { API_BASE } from "../../api";
 
 interface SessionViewProps {
@@ -74,7 +74,7 @@ export function SessionView({ sessionId, session, onUpdateSession }: SessionView
       ) : (
         <div className="flex-1 flex items-center justify-center text-text-muted">
           <div className="text-center space-y-3">
-            <h2 className="text-2xl font-light">WebClaude</h2>
+            <h2 className="text-2xl font-light">CtrlNect</h2>
             <p className="text-sm">Loading session…</p>
           </div>
         </div>

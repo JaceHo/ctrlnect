@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { CronJob, CreateCronRequest, UpdateCronRequest } from "@webclaude/shared";
+import type { CronJob, CreateCronRequest, UpdateCronRequest } from "@ctrlnect/shared";
 import { useWS, useWSListener } from "./use-websocket";
 import { API_BASE } from "../api";
 

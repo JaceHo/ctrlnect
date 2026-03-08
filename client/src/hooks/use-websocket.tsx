@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { WSClient } from "@/lib/ws-client";
-import type { ServerMessage } from "@webclaude/shared";
+import type { ServerMessage } from "@ctrlnect/shared";
 
 const WSContext = createContext<WSClient | null>(null);
 

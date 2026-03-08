@@ -1,5 +1,5 @@
 {
-  "name": "@webclaude/server",
+  "name": "@ctrlnect/server",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.63",
-    "@webclaude/shared": "workspace:*",
+    "@ctrlnect/shared": "workspace:*",
     "hono": "^4.7.0"
   },
   "devDependencies": {

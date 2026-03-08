@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { CreateSessionRequest } from "@webclaude/shared";
-import { AVAILABLE_MODELS } from "@webclaude/shared";
+import type { CreateSessionRequest } from "@ctrlnect/shared";
+import { AVAILABLE_MODELS } from "@ctrlnect/shared";
 
 interface CreateSessionDialogProps {
   open: boolean;

@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight, MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "webclaude_wechat_panel_expanded";
+const STORAGE_KEY = "ctrlnect_wechat_panel_expanded";
 
 function getStoredExpanded(): boolean {
   try {

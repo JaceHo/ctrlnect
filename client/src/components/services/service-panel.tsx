@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Terminal, Play, Square, RotateCcw, Trash2, ChevronDown, ChevronRight, FileText, Plus, Search, Loader2, X, Edit2, ToggleLeft, ToggleRight } from "lucide-react";
 import type { SystemService, DiscoveredService } from "@/hooks/use-services";
 
-const STORAGE_KEY = "webclaude_service_panel_expanded";
+const STORAGE_KEY = "ctrlnect_service_panel_expanded";
 
 function getStoredExpanded(): boolean {
   try {

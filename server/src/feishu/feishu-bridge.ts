@@ -1,15 +1,15 @@
 /**
- * FeishuBridge – integrates Feishu DM conversations as persistent webclaude
+ * FeishuBridge – integrates Feishu DM conversations as persistent ctrlnect
  * sessions.
  *
  * Responsibilities:
  *  1. On startup: for each entry in ~/.openclaw/config.json#feishu.sessions,
- *     find or create a webclaude Session with feishuDmInfo populated.
+ *     find or create a ctrlnect Session with feishuDmInfo populated.
  *  2. Poll Feishu every N ms for new inbound messages; append them to the
  *     message store and broadcast via WebSocket so the UI updates live.
  *  3. If auto_reply=true for a session, invoke the Claude Agent SDK and send
  *     the assistant's reply back to Feishu.
- *  4. Expose helpers so WSHandler can forward manually-typed webclaude replies
+ *  4. Expose helpers so WSHandler can forward manually-typed ctrlnect replies
  *     back to Feishu for non-auto-reply sessions.
  */
 
@@ -22,8 +22,8 @@ import type { SessionStore } from "../session-store.js";
 import type { MessageStore } from "../message-store.js";
 import type { ConnectionManager } from "../connection-manager.js";
 import type { AgentRunner } from "../agent-runner.js";
-import type { PersistedMessage } from "@webclaude/shared";
-import { AVAILABLE_MODELS } from "@webclaude/shared";
+import type { PersistedMessage } from "@ctrlnect/shared";
+import { AVAILABLE_MODELS } from "@ctrlnect/shared";
 import { extractAssistantText } from "../agent-event-utils.js";
 
 // ── State persistence ──────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ function scheduleSaveState(state: FeishuState): void {
 
 // ── Bridge ────────────────────────────────────────────────────────────────────
 
-/** Mapping from webclaude sessionId → Feishu chat_id */
+/** Mapping from ctrlnect sessionId → Feishu chat_id */
 type FeishuSessionMap = Map<string, string>;
 
 export class FeishuBridge {
@@ -246,7 +246,7 @@ export class FeishuBridge {
   }
 
   /**
-   * Returns true if this webclaude session is backed by a Feishu DM.
+   * Returns true if this ctrlnect session is backed by a Feishu DM.
    * Used by WSHandler to decide whether to forward replies.
    */
   isFeishuSession(sessionId: string): boolean {
@@ -254,7 +254,7 @@ export class FeishuBridge {
   }
 
   /**
-   * Send text to Feishu on behalf of a webclaude session.
+   * Send text to Feishu on behalf of a ctrlnect session.
    * Safe to call even if sessionId is not a Feishu session (no-op).
    */
   async forwardReplyToFeishu(
@@ -309,7 +309,7 @@ export class FeishuBridge {
       }
     }
 
-    // Find an existing webclaude session already linked to this chatId
+    // Find an existing ctrlnect session already linked to this chatId
     let existingSessionId: string | undefined;
     for (const [sid, cid] of this.sessionMap) {
       if (cid === chatId) { existingSessionId = sid; break; }

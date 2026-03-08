@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { CheckCircle, XCircle, Loader2, Play, Clock, Zap, BotMessageSquare, Terminal, Save, ToggleLeft, ToggleRight } from "lucide-react";
-import type { CronJob, CronRunLog, Session, UpdateCronRequest } from "@webclaude/shared";
+import type { CronJob, CronRunLog, Session, UpdateCronRequest } from "@ctrlnect/shared";
 import { API_BASE } from "../../api";
 
 interface CronLogViewProps {

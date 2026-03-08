@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
 import { join } from "path";
-import type { PersistedMessage } from "@webclaude/shared";
+import type { PersistedMessage } from "@ctrlnect/shared";
 
 const DATA_DIR = join(import.meta.dir, "../../data/messages");
 

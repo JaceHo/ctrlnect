@@ -32,7 +32,7 @@ Claude Code is powerful, but it's a CLI tool tied to a single terminal session. 
 ```bash
 # Clone
 git clone https://github.com/JaceHo/ctrlnect.git
-cd webclaude
+cd ctrlnect
 
 # Install
 bun install

@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { Session, CreateSessionRequest, CronJob, CreateCronRequest, UpdateCronRequest } from "@webclaude/shared";
+import type { Session, CreateSessionRequest, CronJob, CreateCronRequest, UpdateCronRequest } from "@ctrlnect/shared";
 import { SessionList } from "../session/session-list";
 import { CronPanel } from "../cron/cron-panel";
 import { ServicePanel } from "../services/service-panel";
@@ -41,7 +41,7 @@ interface SidebarProps {
   onSelectWeChat: () => void;
 }
 
-const BOTTOM_HEIGHT_KEY = "webclaude_bottom_panel_height";
+const BOTTOM_HEIGHT_KEY = "ctrlnect_bottom_panel_height";
 const DEFAULT_HEIGHT = 260;
 const MIN_HEIGHT = 36;
 
@@ -192,7 +192,7 @@ export function Sidebar({
             onDiscover={onDiscoverServices}
           />
           <div className="p-2.5 border-t border-border text-[11px] text-text-muted text-center font-light tracking-wide">
-            WebClaude
+            CtrlNect
           </div>
         </div>
       </div>

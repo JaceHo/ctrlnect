@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, BotMessageSquare, Terminal } from "lucide-react";
-import type { CronJob, Session, CreateCronRequest, UpdateCronRequest } from "@webclaude/shared";
+import type { CronJob, Session, CreateCronRequest, UpdateCronRequest } from "@ctrlnect/shared";
 
 const PRESETS = [
   { label: "Every 1 min", value: "*/1 * * * *" },

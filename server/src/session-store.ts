@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
-import type { Session, SessionStatus } from "@webclaude/shared";
+import type { Session, SessionStatus } from "@ctrlnect/shared";
 
 const DATA_DIR = join(import.meta.dir, "../../data");
 const SESSIONS_FILE = join(DATA_DIR, "sessions.json");

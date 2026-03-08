@@ -1,5 +1,5 @@
 import { query, type Query, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { CostInfo } from "@webclaude/shared";
+import type { CostInfo } from "@ctrlnect/shared";
 
 interface RunningSession {
   query: Query;
@@ -160,14 +160,14 @@ function createStreamingQuery(text: string, model: string, sdkSessionId: string,
 
 export class AgentRunner {
   private running = new Map<string, RunningSession>();
-  /** Map webclaude sessionId -> SDK sessionId (may rotate on retry) */
+  /** Map ctrlnect sessionId -> SDK sessionId (may rotate on retry) */
   private sdkSessionIds = new Map<string, string>();
 
   isRunning(sessionId: string): boolean {
     return this.running.has(sessionId);
   }
 
-  /** Get or create a stable SDK sessionId for a webclaude session. */
+  /** Get or create a stable SDK sessionId for a ctrlnect session. */
   private getSDKSessionId(sessionId: string): string {
     let sdkId = this.sdkSessionIds.get(sessionId);
     if (!sdkId) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Play, Pencil, Trash2, Clock, Download, BotMessageSquare, Terminal } from "lucide-react";
-import type { CronJob, Session, CreateCronRequest, UpdateCronRequest } from "@webclaude/shared";
+import type { CronJob, Session, CreateCronRequest, UpdateCronRequest } from "@ctrlnect/shared";
 import { CronDialog } from "./cron-dialog";
 
 interface CronPanelProps {

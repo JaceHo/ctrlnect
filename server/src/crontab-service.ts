@@ -1,12 +1,12 @@
 /**
  * System crontab integration.
- * Manages a "webclaude-managed" section of the user's personal crontab.
- * Each managed entry is tagged with a comment line:  # webclaude:<cronId>
+ * Manages a "ctrlnect-managed" section of the user's personal crontab.
+ * Each managed entry is tagged with a comment line:  # ctrlnect:<cronId>
  */
 
-import type { CronJob } from "@webclaude/shared";
+import type { CronJob } from "@ctrlnect/shared";
 
-const TAG_PREFIX = "# webclaude:";
+const TAG_PREFIX = "# ctrlnect:";
 
 export interface SystemCrontabEntry {
   schedule: string;   // 5-field cron expression
@@ -48,7 +48,7 @@ async function writeRaw(content: string): Promise<void> {
 }
 
 /**
- * Parse the current user crontab and return entries that are NOT managed by WebClaude.
+ * Parse the current user crontab and return entries that are NOT managed by CtrlNect.
  * This is the "user's own" crontab lines we should never touch.
  */
 export async function readUnmanagedLines(): Promise<string[]> {
@@ -77,7 +77,7 @@ export async function readUnmanagedLines(): Promise<string[]> {
 }
 
 /**
- * Parse crontab entries that ARE managed by WebClaude (tagged).
+ * Parse crontab entries that ARE managed by CtrlNect (tagged).
  * Returns a map of cronId -> schedule+command text.
  */
 export async function readManagedEntries(): Promise<Map<string, { schedule: string; command: string }>> {

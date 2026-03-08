@@ -1,6 +1,6 @@
 import type { CronStore } from "./cron-store.js";
 import type { ConnectionManager } from "./connection-manager.js";
-import type { CronJob, CronRunLog } from "@webclaude/shared";
+import type { CronJob, CronRunLog } from "@ctrlnect/shared";
 import { runShellCommand } from "./crontab-service.js";
 
 // Minimal cron expression parser supporting:

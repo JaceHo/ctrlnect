@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { ClientMessage, ContentBlock, PersistedMessage } from "@webclaude/shared";
+import type { ClientMessage, ContentBlock, PersistedMessage } from "@ctrlnect/shared";
 import type { ConnectionManager, WSData } from "./connection-manager.js";
 import type { AgentRunner } from "./agent-runner.js";
 import type { SessionStore } from "./session-store.js";
@@ -13,7 +13,7 @@ export class WSHandler {
     private agentRunner: AgentRunner,
     private sessionStore: SessionStore,
     private messageStore: MessageStore,
-    /** Optional – when present, manually-typed webclaude replies for Feishu DM
+    /** Optional – when present, manually-typed ctrlnect replies for Feishu DM
      *  sessions are also forwarded back to Feishu after Claude finishes. */
     private feishuBridge: FeishuBridge | null = null,
   ) {}
@@ -247,7 +247,7 @@ export class WSHandler {
           cost,
         });
 
-        // Forward the reply to Feishu for manually-typed webclaude messages
+        // Forward the reply to Feishu for manually-typed ctrlnect messages
         // Skip if session has placeholder chatId (no real Feishu DM yet)
         const session = this.sessionStore.get(sessionId);
         const hasValidChatId = session?.feishuDmInfo?.chatId && session.feishuDmInfo.chatId !== "placeholder";

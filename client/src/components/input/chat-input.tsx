@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Square, ImagePlus } from "lucide-react";
-import type { ImageData } from "@webclaude/shared";
+import type { ImageData } from "@ctrlnect/shared";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {

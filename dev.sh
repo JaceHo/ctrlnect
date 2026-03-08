@@ -57,7 +57,7 @@ kill_existing() {
     pkill -9 -f "bun.*--watch.*index.ts" 2>/dev/null
     pkill -9 -f "bun run.*server" 2>/dev/null
     pkill -9 -f "bun.*index.ts" 2>/dev/null
-    pkill -f "webclaude" 2>/dev/null
+    pkill -f "ctrlnect" 2>/dev/null
     pkill -f "vite" 2>/dev/null
     pkill -f "bun run.*client" 2>/dev/null
 
