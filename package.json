@@ -1,14 +1,15 @@
 {
-  "name": "webclaude",
+  "name": "ctrlnect",
   "version": "0.1.0",
-  "description": "Self-hosted web UI for running Claude as an autonomous coding agent",
+  "description": "Control your AI agents. Connect from anywhere. Self-hosted web UI for Claude autonomous coding agents.",
   "private": true,
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/JaceHo/webclaude.git"
+    "url": "https://github.com/JaceHo/ctrlnect.git"
   },
   "keywords": [
+    "ctrlnect",
     "claude",
     "claude-code",
     "agent",
@@ -16,7 +17,8 @@
     "coding-assistant",
     "web-ui",
     "claude-agent-sdk",
-    "anthropic"
+    "anthropic",
+    "self-hosted"
   ],
   "workspaces": ["shared", "server", "client"],
   "scripts": {
