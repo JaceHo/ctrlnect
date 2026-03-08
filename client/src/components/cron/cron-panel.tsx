@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Play, Pencil, Trash2, Clock, Download, BotMessageSquare, Terminal } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Play, Pencil, Trash2, Clock, Download, BotMessageSquare, Terminal, AlertTriangle } from "lucide-react";
 import type { CronJob, Session, CreateCronRequest, UpdateCronRequest } from "@ctrlnect/shared";
 import { CronDialog } from "./cron-dialog";
 
@@ -58,6 +58,7 @@ export function CronPanel({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCron, setEditingCron] = useState<CronJob | null>(null);
   const [importing, setImporting] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<CronJob | null>(null);
 
   const promptCrons = crons.filter((c) => c.type !== "command");
   const commandCrons = crons.filter((c) => c.type === "command");
@@ -175,7 +176,7 @@ export function CronPanel({
                       <Pencil size={12} />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); onDeleteCron(cron.id); }}
+                      onClick={(e) => { e.stopPropagation(); setPendingDelete(cron); }}
                       className="p-1 text-text-muted hover:text-red-400 transition-colors"
                       title="Delete"
                     >
@@ -200,6 +201,64 @@ export function CronPanel({
         onCreate={onCreateCron}
         onUpdate={onUpdateCron}
       />
+
+      {/* Delete confirmation dialog */}
+      {pendingDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setPendingDelete(null)}
+        >
+          <div
+            className="bg-bg-secondary border border-border rounded-xl shadow-xl w-[340px] p-5 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-semibold text-text-primary">Delete cron job?</div>
+                <div className="text-xs text-text-muted mt-0.5">This action cannot be undone.</div>
+              </div>
+            </div>
+
+            <div className="bg-bg-tertiary rounded-lg px-3 py-2.5 flex flex-col gap-1.5 text-xs">
+              <div className="flex items-center gap-2">
+                <TypeBadge type={pendingDelete.type ?? "prompt"} />
+                <span className="font-medium text-text-primary truncate">{pendingDelete.name}</span>
+              </div>
+              <div className="font-mono text-text-muted">{pendingDelete.schedule}</div>
+            </div>
+
+            <div className={`text-xs rounded-lg px-3 py-2 border ${
+              pendingDelete.type === "command"
+                ? "bg-orange-500/10 border-orange-500/25 text-orange-300"
+                : "bg-blue-500/10 border-blue-500/25 text-blue-300"
+            }`}>
+              {pendingDelete.type === "command"
+                ? "⚠ This entry will be removed from your system crontab (crontab -l)."
+                : "This job is internal to CtrlNect — your system crontab is not affected."}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setPendingDelete(null)}
+                className="px-3 py-1.5 text-xs rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const id = pendingDelete.id;
+                  setPendingDelete(null);
+                  await onDeleteCron(id);
+                }}
+                className="px-3 py-1.5 text-xs rounded-lg bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
