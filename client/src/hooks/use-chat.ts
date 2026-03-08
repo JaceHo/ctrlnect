@@ -220,21 +220,30 @@ export function useChat(sessionId: string | null) {
           if (msg.cost) setLastCost(msg.cost);
           break;
 
-        case "error":
+        case "error": {
+          const isRetrying = msg.message.endsWith("— retrying...");
           console.error("[Chat] Error:", msg.message);
-          setStreaming(false);
-          cancelTypewriter();
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: crypto.randomUUID(),
-              role: "assistant",
-              blocks: [{ type: "text", text: `Error: ${msg.message}` }],
-              parentToolUseId: null,
-              timestamp: new Date().toISOString(),
-            },
-          ]);
+          // Keep streaming active during retry so the input stays disabled
+          if (!isRetrying) {
+            setStreaming(false);
+            cancelTypewriter();
+          }
+          // Transient retry errors should not be added to the permanent
+          // message history — they'll be followed by the real response.
+          if (!isRetrying) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                blocks: [{ type: "text", text: `Error: ${msg.message}` }],
+                parentToolUseId: null,
+                timestamp: new Date().toISOString(),
+              },
+            ]);
+          }
           break;
+        }
 
         case "agent_event":
           processAgentEvent(msg.event, setMessages);
@@ -309,6 +318,14 @@ export function useChat(sessionId: string | null) {
     }
   }, [subTasks, sessionId, ws]);
 
+  const reloadMessages = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const r = await fetch(`${API_BASE}/api/sessions/${sessionId}/messages`);
+      if (r.ok) setMessages(await r.json());
+    } catch { /* ignore */ }
+  }, [sessionId]);
+
   return {
     messages,
     streaming,
@@ -319,6 +336,7 @@ export function useChat(sessionId: string | null) {
     addSubTask,
     interruptSubTask,
     retrySubTask,
+    reloadMessages,
   };
 }
 
@@ -336,7 +354,9 @@ function processAgentEvent(
       const uuid = (e.uuid as string) || crypto.randomUUID();
       const message = e.message as { content: unknown } | undefined;
       const blocks = extractUserBlocks(message?.content);
+      // Skip empty blocks and internal SDK system-prompt marker messages
       if (blocks.length === 0) break;
+      if (blocks.length === 1 && blocks[0].type === "text" && blocks[0].text === "[system message]") break;
       setMessages((prev) => {
         if (prev.some((m) => m.id === uuid)) return prev;
         return [...prev, {

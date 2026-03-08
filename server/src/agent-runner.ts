@@ -232,8 +232,8 @@ export class AgentRunner {
 
       this.running.set(sessionId, { query: q, aborted: false });
 
+      let gotResult = false;
       try {
-        let gotResult = false;
         for await (const msg of q) {
           // Log message types in streaming mode
           if (mode === "streaming") {
@@ -258,6 +258,11 @@ export class AgentRunner {
         // Success — break out of retry loop
         return;
       } catch (err) {
+        // If we already got a result message, the agent completed successfully.
+        // Some Claude Code versions exit with code 1 after a successful run —
+        // treat that as a clean finish rather than an error.
+        if (gotResult) return;
+
         const error = err instanceof Error ? err : new Error(String(err));
         const detail = `${error.message}${error.stack ? `\n${error.stack.split("\n").slice(1, 3).join("\n")}` : ""}`;
         console.error(`[AgentRunner] Error (attempt ${attempt + 1}):`, detail);

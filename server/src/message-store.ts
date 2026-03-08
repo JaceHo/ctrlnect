@@ -13,12 +13,15 @@ export class MessageStore {
     return join(DATA_DIR, `${sessionId}.json`);
   }
 
-  /** Load all messages for a session. */
+  /** Load all messages for a session, sorted chronologically by timestamp. */
   getAll(sessionId: string): PersistedMessage[] {
     const fp = this.filePath(sessionId);
     try {
       if (existsSync(fp)) {
-        return JSON.parse(readFileSync(fp, "utf-8"));
+        const messages = JSON.parse(readFileSync(fp, "utf-8")) as PersistedMessage[];
+        return messages.sort((a, b) =>
+          (a.timestamp ?? "").localeCompare(b.timestamp ?? ""),
+        );
       }
     } catch {
       // Corrupt file — start fresh

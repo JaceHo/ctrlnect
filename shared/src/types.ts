@@ -62,10 +62,12 @@ export interface CostInfo {
 
 export interface CronJob {
   id: string;
-  sessionId: string;
+  /** "prompt" = AI prompt executed via Claude; "command" = shell command synced to system crontab */
+  type: "prompt" | "command";
+  sessionId: string;  // only meaningful for type="prompt"
   name: string;
   schedule: string;
-  prompt: string;
+  prompt: string;     // AI prompt for type="prompt"; shell command for type="command"
   enabled: boolean;
   status: "idle" | "running" | "error";
   lastRun: string | null;
@@ -81,11 +83,13 @@ export interface CronRunLog {
   startedAt: string;
   endedAt: string | null;
   error: string | null;
+  output: string | null;  // stdout/stderr for command type
   trigger: "schedule" | "manual";
 }
 
 export interface CreateCronRequest {
-  sessionId: string;
+  type?: "prompt" | "command";
+  sessionId?: string;   // required when type="prompt"
   name: string;
   schedule: string;
   prompt: string;
@@ -93,6 +97,7 @@ export interface CreateCronRequest {
 }
 
 export interface UpdateCronRequest {
+  type?: "prompt" | "command";
   sessionId?: string;
   name?: string;
   schedule?: string;

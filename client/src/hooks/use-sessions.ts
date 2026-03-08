@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Session, CreateSessionRequest, UpdateSessionRequest } from "@webclaude/shared";
-import { useWSListener } from "./use-websocket";
+import { useWS, useWSListener } from "./use-websocket";
 import { API_BASE } from "../api";
 
 export function useSessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const ws = useWS();
 
-  // Fetch sessions on mount
-  useEffect(() => {
+  const fetchSessions = useCallback(() => {
     fetch(`${API_BASE}/api/sessions`)
       .then((r) => r.json())
       .then((data) => {
@@ -17,6 +17,12 @@ export function useSessions() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  // Fetch on mount
+  useEffect(() => { fetchSessions(); }, [fetchSessions]);
+
+  // Re-fetch whenever the WebSocket reconnects (server restart recovery)
+  useEffect(() => ws.onConnect(fetchSessions), [ws, fetchSessions]);
 
   // Listen for session updates via WebSocket
   useWSListener(
@@ -42,8 +48,6 @@ export function useSessions() {
       body: JSON.stringify(req),
     });
     const session: Session = await res.json();
-    // Don't add here - WebSocket will broadcast session_update and add it
-    // This prevents duplicate sessions
     return session;
   }, []);
 

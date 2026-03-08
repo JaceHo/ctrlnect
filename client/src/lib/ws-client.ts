@@ -1,10 +1,12 @@
 import type { ClientMessage, ServerMessage } from "@webclaude/shared";
 
 type Listener = (msg: ServerMessage) => void;
+type ConnectListener = () => void;
 
 export class WSClient {
   private ws: WebSocket | null = null;
   private listeners = new Set<Listener>();
+  private connectListeners = new Set<ConnectListener>();
   private pendingMessages: ClientMessage[] = [];
   private url: string;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,6 +41,8 @@ export class WSClient {
       for (const msg of toSend) {
         this.ws!.send(JSON.stringify(msg));
       }
+      // Notify connect listeners so hooks can re-fetch stale data
+      for (const cb of this.connectListeners) cb();
     };
 
     this.ws.onmessage = (event) => {
@@ -69,7 +73,7 @@ export class WSClient {
     this.reconnectTimer = setTimeout(() => {
       console.log("[WS] Reconnecting...");
       this.connect();
-    }, 1500);
+    }, 500);
   }
 
   disconnect() {
@@ -99,5 +103,10 @@ export class WSClient {
   on(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  onConnect(cb: ConnectListener): () => void {
+    this.connectListeners.add(cb);
+    return () => this.connectListeners.delete(cb);
   }
 }
