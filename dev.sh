@@ -53,15 +53,17 @@ CLIENT_PID=""
 kill_existing() {
     log_info "Killing existing processes..."
 
+    # Kill bun watch parent first (prevents child respawn), then orphaned children
+    pkill -9 -f "bun.*--watch.*index.ts" 2>/dev/null
+    pkill -9 -f "bun run.*server" 2>/dev/null
+    pkill -9 -f "bun.*index.ts" 2>/dev/null
+    pkill -f "webclaude" 2>/dev/null
+    pkill -f "vite" 2>/dev/null
+    pkill -f "bun run.*client" 2>/dev/null
+
     # Kill by port
     lsof -ti :3001 | xargs kill -9 2>/dev/null
     lsof -ti :5173 | xargs kill -9 2>/dev/null
-
-    # Kill bun processes related to this project
-    pkill -f "webclaude" 2>/dev/null
-    pkill -f "vite" 2>/dev/null
-    pkill -f "bun run.*server" 2>/dev/null
-    pkill -f "bun run.*client" 2>/dev/null
 
     sleep 1
     log_success "Existing processes killed"
@@ -70,11 +72,12 @@ kill_existing() {
 # Start server
 start_server() {
     log_info "Starting server (port 3001)..."
-    bun run --watch server/src/index.ts 2>&1 | while IFS= read -r line; do
+    # NODE_TLS_REJECT_UNAUTHORIZED=0 allows self-signed certs (corp proxy / VPN environments)
+    NODE_TLS_REJECT_UNAUTHORIZED=0 bun run --watch server/src/index.ts 2>&1 | while IFS= read -r line; do
         log "[SERVER] $line"
     done &
     SERVER_PID=$!
-    log_success "Server started (PID: $SERVER_PID)"
+    log_success "Server started (PID: $SERVER_PID) → http://localhost:3001"
 }
 
 # Start client
@@ -91,7 +94,7 @@ start_client() {
         fi
     done &
     CLIENT_PID=$!
-    log_success "Client started (PID: $CLIENT_PID)"
+    log_success "Client started (PID: $CLIENT_PID) → http://localhost:5173"
 }
 
 # Refresh client (restart Vite)
@@ -105,21 +108,36 @@ refresh_client() {
     pkill -f "vite" 2>/dev/null
     sleep 1
     start_client
-    log_success "Client refreshed"
+    log_success "Client refreshed → http://localhost:5173"
 }
 
 # Restart server
 restart_server() {
     log_action "Restarting server..."
-    if [ -n "$SERVER_PID" ]; then
-        kill $SERVER_PID 2>/dev/null
-        sleep 0.5
-    fi
-    # Kill any remaining server processes
-    pkill -f "bun run.*server" 2>/dev/null
-    sleep 1
+    # 1. Kill the log-pipe subshell
+    [ -n "$SERVER_PID" ] && kill $SERVER_PID 2>/dev/null
+
+    # 2. Kill the bun --watch parent FIRST so it cannot respawn the child
+    pkill -9 -f "bun.*--watch.*index.ts" 2>/dev/null
+    pkill -9 -f "bun run.*server" 2>/dev/null
+    sleep 0.3
+
+    # 3. Kill any surviving child bun server process
+    pkill -9 -f "bun.*index.ts" 2>/dev/null
+    lsof -ti :3001 | xargs kill -9 2>/dev/null
+    sleep 0.5
+
+    # 4. Wait until port 3001 is actually free before starting (max 5s)
+    local waited=0
+    while lsof -ti :3001 > /dev/null 2>&1; do
+        lsof -ti :3001 | xargs kill -9 2>/dev/null
+        sleep 0.3
+        waited=$((waited + 1))
+        [ $waited -ge 15 ] && break
+    done
+
     start_server
-    log_success "Server restarted"
+    log_success "Server restarted → http://localhost:3001"
 }
 
 # Cleanup on exit
@@ -170,6 +188,9 @@ echo ""
 echo "========================================"
 echo -e "${GREEN}Dev server running!${NC}"
 echo "========================================"
+echo -e "  ${CYAN}Client${NC}  → http://localhost:5173"
+echo -e "  ${CYAN}Server${NC}  → http://localhost:3001"
+echo "----------------------------------------"
 echo -e "  ${YELLOW}r${NC} - Refresh client (restart Vite)"
 echo -e "  ${YELLOW}R${NC} - Restart server"
 echo -e "  ${YELLOW}q${NC} - Quit"
@@ -178,6 +199,24 @@ echo -e "Or use control file: echo r > .dev.sh.control"
 echo "========================================"
 echo ""
 
+# Watchdog: auto-restart server if port 3001 goes down unexpectedly.
+# Runs every ~5s. Skipped if a manual restart is already in progress.
+SERVER_WATCHDOG_TICK=0
+WATCHDOG_RESTARTING=0
+watchdog_check() {
+    SERVER_WATCHDOG_TICK=$((SERVER_WATCHDOG_TICK + 1))
+    # Check every ~5s (called every 100ms in TTY mode, every 1s in no-TTY)
+    local interval=50
+    [ ! -t 0 ] && interval=5
+    [ $((SERVER_WATCHDOG_TICK % interval)) -ne 0 ] && return
+    if [ $WATCHDOG_RESTARTING -eq 0 ] && ! lsof -ti :3001 > /dev/null 2>&1; then
+        WATCHDOG_RESTARTING=1
+        log_warn "Server on :3001 is down — auto-restarting..."
+        restart_server
+        WATCHDOG_RESTARTING=0
+    fi
+}
+
 # Check if we have a TTY
 if [ -t 0 ]; then
     log_info "Terminal detected - keyboard shortcuts enabled"
@@ -185,6 +224,7 @@ if [ -t 0 ]; then
     stty -echo -icanon time 0 min 0
     while true; do
         check_control_file
+        watchdog_check
         key=$(dd bs=1 count=1 2>/dev/null | tr -d '\n\r')
         case "$key" in
             r)
@@ -207,9 +247,10 @@ else
     echo "  echo R > .dev.sh.control  # Restart server"
     echo "  echo q > .dev.sh.control  # Quit"
     echo ""
-    # Poll for control file commands
+    # Poll for control file commands + watchdog
     while true; do
         check_control_file
+        watchdog_check
         sleep 1
     done
 fi
