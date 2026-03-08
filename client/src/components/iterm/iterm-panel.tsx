@@ -1,6 +1,7 @@
-import { ChevronDown, ChevronRight, Terminal, WifiOff, Loader2, FolderOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, Terminal, WifiOff, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { ItermSession } from "@/hooks/use-iterm";
+import { formatTime } from "@/lib/utils";
 
 const STORAGE_KEY = "ctrlnect_iterm_panel_expanded";
 
@@ -80,26 +81,27 @@ export function ItermPanel({ sessions, available, activeSessionId, onSelect }: I
                   {/* Status dot */}
                   <div className="mt-[5px] w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
 
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    {/* Line 1 — AI title / session name */}
-                    <div className="flex items-center gap-1 min-w-0">
-                      <span className="text-sm truncate text-text-primary leading-snug">
+                  <div className="flex-1 min-w-0">
+                    {/* Line 1 — dir basename (title) + time */}
+                    <div className="flex items-baseline justify-between gap-1">
+                      <span className="text-sm font-medium truncate text-text-primary leading-snug" title={s.pwd}>
+                        {pwd ? pwd.split("/").pop() || pwd : s.name}
+                      </span>
+                      {s.lastActivity && (
+                        <span className="text-[10px] text-text-muted flex-shrink-0">
+                          {formatTime(s.lastActivity)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Line 2 — AI summary subtitle */}
+                    <div className="flex items-center gap-1 min-w-0 mt-0.5">
+                      <span className="text-xs text-text-muted truncate" title={title}>
                         {title}
                       </span>
                       {isLoadingTitle && (
                         <Loader2 size={9} className="animate-spin text-text-muted flex-shrink-0" />
                       )}
-                    </div>
-
-                    {/* Line 2 — pwd */}
-                    <div className="flex items-center gap-1 min-w-0">
-                      <FolderOpen size={9} className="text-text-muted flex-shrink-0" />
-                      <span
-                        className="text-[11px] font-mono text-text-muted truncate"
-                        title={s.pwd}
-                      >
-                        {pwd ?? s.name}
-                      </span>
                     </div>
                   </div>
                 </div>

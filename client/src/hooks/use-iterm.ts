@@ -11,6 +11,7 @@ export interface ItermSession {
   profile_name?: string;
   pwd?: string;
   aiTitle?: string;
+  lastActivity?: string; // ISO timestamp — tracked client-side
 }
 
 export interface ItermContent {
@@ -47,6 +48,8 @@ export function useIterm() {
   // Queue: processes one title at a time
   const titleQueueRef = useRef<{ id: string; name: string; fp?: string }[]>([]);
   const queueRunningRef = useRef(false);
+  const lastActivityRef = useRef<Map<string, string>>(new Map());
+  const newestLineRef = useRef<Map<string, number>>(new Map());
 
   // Set when server first responds — queue won't start until this is set
   const serverReadyRef = useRef<number>(0);
@@ -135,8 +138,16 @@ export function useIterm() {
         const data = (await res.json()) as { sessions?: ItermSession[]; error?: string };
         const newSessions = data.sessions || [];
         const merged = newSessions.map((s) => {
+          // Stamp first-seen time for new sessions
+          if (!lastActivityRef.current.has(s.session_id)) {
+            lastActivityRef.current.set(s.session_id, new Date().toISOString());
+          }
           const cached = titleCacheRef.current.get(s.session_id);
-          return cached ? { ...s, aiTitle: cached.title } : s;
+          return {
+            ...s,
+            aiTitle: cached ? cached.title : s.aiTitle,
+            lastActivity: lastActivityRef.current.get(s.session_id),
+          };
         });
         setSessions(merged);
         setAvailable(!data.error);
@@ -187,6 +198,18 @@ export function useIterm() {
         const cached = titleCacheRef.current.get(sessionId);
         if (cached && fp !== cached.contentFp) {
           enqueueTitleFetch(sessionId, sessionName || "", fp);
+        }
+        // Update lastActivity whenever new lines appear
+        const prevNewest = newestLineRef.current.get(sessionId) ?? -1;
+        if (data.newest_line > prevNewest) {
+          newestLineRef.current.set(sessionId, data.newest_line);
+          const now = new Date().toISOString();
+          lastActivityRef.current.set(sessionId, now);
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.session_id === sessionId ? { ...s, lastActivity: now } : s,
+            ),
+          );
         }
         return data;
       }
